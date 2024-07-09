@@ -9,6 +9,7 @@ import requests
 import time
 from huggingface_hub import InferenceClient
 from app.commands import Command
+from langchain_groq import ChatGroq  # Import Groq library
 
 class TutorAgent(Command):
     def __init__(self):
@@ -22,6 +23,8 @@ class TutorAgent(Command):
         self.llm = ChatOpenAI(openai_api_key=self.API_KEY, model="gpt-4-0125-preview")  # Initialize once and reuse
         self.embedding_function = OpenAIEmbeddings()
         self.db = Chroma(persist_directory="chroma", embedding_function=self.embedding_function)
+        self.GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+        self.groq_llm = ChatGroq(api_key=self.GROQ_API_KEY, model="llama3-70b-8192")  # Initialize Groq model
 
     def calculate_tokens(self, text):
         return len(text) + text.count(' ')
@@ -60,7 +63,7 @@ class TutorAgent(Command):
         print("----\n END SOURCES \n----")
 
         if len(results) == 0 or results[0][1] < 0.7:
-            return "Unable to find matching results.", 0
+            return "Unable to find matching results.", 0, []
 
         context_text = "\n\n---\n\n".join([doc.page_content for doc, _score in results])
         prompt_text = f"""
@@ -91,6 +94,15 @@ class TutorAgent(Command):
         elif model_choice == "mixtral":
             print("Using Model: Mixtral")
             response = self.query_mixtral_api(prompt_text)
+        elif model_choice == "groq":
+            print("Using Model: Groq")
+            prompt = ChatPromptTemplate.from_messages([("human", prompt_text)])
+            chain = prompt | self.groq_llm
+            start_time = time.time()
+            response = chain.invoke({"input": user_input}).content
+            end_time = time.time()
+            time_taken = end_time - start_time
+            print(f"Time taken by the LLM call: {time_taken:.2f} seconds")
         else:
             print("Invalid model choice. Defaulting to OpenAI.")
             chain = ChatPromptTemplate.from_messages(self.history + [("system", prompt_text)]) | self.llm | output_parser

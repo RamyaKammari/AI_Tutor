@@ -15,7 +15,7 @@ tutor_agent = st.session_state.tutor_agent
 st.title("JEE Chemistry AI Tutor", anchor="center")
 st.write("Welcome to the JEE Chemistry AI Tutor! Your personal buddy to help and explain your doubts in chemistry.")
 
-model_choice = st.selectbox("Choose model", ["mixtral", "openai"])
+model_choice = st.selectbox("Choose model", ["mixtral", "openai", "groq"])
 st.session_state.model_choice = model_choice
 
 if "messages" not in st.session_state:
