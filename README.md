@@ -25,7 +25,7 @@ https://ncert.nic.in/textbook.php?kech1=0-6
 
 Create the Chroma DB:
 
-    ```sh
+    ```python
     python create_database.py
     ```
 
@@ -33,7 +33,7 @@ Create the Chroma DB:
 
 Run the Streamlit app:
 
-    ```sh
+    ```python
     streamlit run streamlit_app.py
     ```
 
@@ -41,6 +41,6 @@ Run the Streamlit app:
 
 Alternatively, you can use the bot from the CLI by running the following command:
 
-    ```sh
+    ```python
     python main.py
     ```
