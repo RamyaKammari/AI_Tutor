@@ -43,12 +43,15 @@ class TutorAgent(Command):
         raise Exception("Failed to get a response from Mixtral API after several retries.")
 
     def interact_with_ai(self, user_input, character_name, model_choice="mixtral"):
+        print("----\n HISTORY \n----")
+        print(self.history)
+        print("----\n END HISTORY \n----")
         query_text = str(self.history) 
         results = self.db.similarity_search_with_relevance_scores(query_text, k=5)
 
-        # print("----\n RESULTS \n----")
-        # print(results)
-        # print("----\n END RESULTS \n----")
+        print("----\n RESULTS \n----")
+        print(results)
+        print("----\n END RESULTS \n----")
 
 
         sources = [doc.metadata.get("source", None) for doc, _score in results]
@@ -82,14 +85,23 @@ class TutorAgent(Command):
         output_parser = StrOutputParser()
 
         if model_choice == "openai":
+            print("Using Model: OpenAI")
             chain = ChatPromptTemplate.from_messages(self.history + [("system", prompt_text)]) | self.llm | output_parser
             response = chain.invoke({"input": user_input})
         elif model_choice == "mixtral":
+            print("Using Model: Mixtral")
             response = self.query_mixtral_api(prompt_text)
+        else:
+            print("Invalid model choice. Defaulting to OpenAI.")
+            chain = ChatPromptTemplate.from_messages(self.history + [("system", prompt_text)]) | self.llm | output_parser
+            response = chain.invoke({"input": user_input})
         
+        print("-----\n RESPONSE \n-----")
+        print(response)
+        print("-----\n END RESPONSE \n-----")
         tokens_used = self.calculate_tokens(prompt_text + user_input + response)
         logging.info(f"API call made. Tokens used: {tokens_used}")
-        return response, tokens_used
+        return response, tokens_used, list(set(sources))
 
     def execute(self, *args, **kwargs):
         character_name = kwargs.get("character_name", "Tutor")
@@ -105,7 +117,7 @@ class TutorAgent(Command):
             self.history.append(("user", user_input))
 
             try:
-                response, tokens_used = self.interact_with_ai(user_input, character_name, model_choice)
+                response, tokens_used, sources = self.interact_with_ai(user_input, character_name, model_choice)
                 print(f"Tutor: {response}")
                 # print(f"(This interaction used {tokens_used} tokens.)")
                 self.history.append(("system", response))
