@@ -25,15 +25,22 @@ https://ncert.nic.in/textbook.php?kech1=0-6
 
 Create the Chroma DB:
 
-    ```python
+    ```bash
     python create_database.py
     ```
 
-## Run the App
+## Run the Web APP 
+Start the app by running the below command:
+
+    ```bash
+    uvicorn main:app --reload
+    ```
+
+## Run the App using Streamlit
 
 Run the Streamlit app:
 
-    ```python
+    ```bash
     streamlit run streamlit_app.py
     ```
 
@@ -41,6 +48,6 @@ Run the Streamlit app:
 
 Alternatively, you can use the bot from the CLI by running the following command:
 
-    ```python
-    python main.py
+    ```bash
+    python run_cli.py
     ```

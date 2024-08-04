@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JEE Chemistry AI Tutor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f6;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            background-color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+        .chat-container {
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 1rem;
+            height: 500px;
+            overflow-y: auto;
+        }
+        .chat-message {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        .user-message {
+            background-color: #e7f0fd;
+            border-left: 4px solid #3b82f6;
+        }
+        .assistant-message {
+            background-color: #f0f2f6;
+            border-left: 4px solid #10b981;
+        }
+        .input-container {
+            display: flex;
+            margin-top: 1rem;
+        }
+        #user-input {
+            flex-grow: 1;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 8px 0 0 8px;
+            font-size: 1rem;
+        }
+        #send-button {
+            background-color: #3b82f6;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0 8px 8px 0;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        #send-button:hover {
+            background-color: #2563eb;
+        }
+        select {
+            padding: 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+        h1 {
+            color: #1f2937;
+            margin-bottom: 1rem;
+        }
+        .caption {
+            font-size: 0.75rem;
+            color: #6b7280;
+            margin-top: 0.5rem;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            display: none;
+            margin: 10px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 py-8">
+    <div class="container">
+        <h1 class="text-3xl font-bold text-center mb-6">JEE Chemistry AI Tutor</h1>
+        <p class="text-center text-gray-600 mb-6">Welcome to the JEE Chemistry AI Tutor! Your personal buddy to help and explain your doubts in chemistry.</p>
+        
+        <div class="mb-4">
+            <label for="model-choice" class="block mb-2 font-medium text-gray-700">Choose model:</label>
+            <select id="model-choice" class="w-full bg-white">
+                <option value="groq" selected>Groq</option> <!-- Set Groq as default -->
+                <option value="mixtral">Mixtral</option>
+                <option value="openai">OpenAI</option>
+            </select>
+        </div>
+        
+        <div id="chat-history" class="chat-container mb-6"></div>
+        
+        <div class="spinner" id="spinner"></div>
+        
+        <div class="input-container">
+            <input type="text" id="user-input" placeholder="Ask a question...">
+            <button id="send-button" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        let sessionId;
+
+        async function initializeSession() {
+            // Create a new session and load it
+            const response = await fetch('/new_session', { method: 'POST' });
+            const data = await response.json();
+            sessionId = data.session_id;
+            await loadSession();
+        }
+
+        async function loadSession() {
+            // Load session data and update the chat history
+            const response = await fetch(`/session/${sessionId}`);
+            const session = await response.json();
+            document.getElementById('model-choice').value = session.model_choice;
+            const chatHistory = document.getElementById('chat-history');
+            chatHistory.innerHTML = '';
+            session.messages.forEach(message => addMessageToChat(message.role, message.content, message.caption));
+        }
+
+        async function sendMessage() {
+            // Send user input to the AI tutor and display the response
+            const userInput = document.getElementById('user-input');
+            const prompt = userInput.value.trim();
+            if (!prompt) return;
+
+            addMessageToChat('user', prompt);
+            userInput.value = '';
+
+            document.getElementById('spinner').style.display = 'block';
+            document.getElementById('send-button').disabled = true;
+
+            try {
+                const response = await fetch(`/interact/${sessionId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        prompt,
+                        model_choice: document.getElementById('model-choice').value
+                    })
+                });
+                const data = await response.json();
+                addMessageToChat('assistant', data.response, `Sources: ${data.sources} | Time: ${data.elapsed_time}s | Tokens: ${data.tokens_used} | Model: ${document.getElementById('model-choice').value.charAt(0).toUpperCase() + document.getElementById('model-choice').value.slice(1)}`);
+            } catch (error) {
+                console.error('Error:', error);
+                addMessageToChat('system', 'An error occurred while processing your request.');
+            } finally {
+                document.getElementById('spinner').style.display = 'none';
+                document.getElementById('send-button').disabled = false;
+            }
+        }
+
+        function addMessageToChat(role, content, caption = '') {
+            // Add a message to the chat history
+            const chatHistory = document.getElementById('chat-history');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message ${role === 'user' ? 'user-message' : 'assistant-message'}`;
+            
+            // Convert markdown to HTML
+            const formattedContent = content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Bold text
+
+            messageDiv.innerHTML = `
+                <div style="white-space: pre-wrap;">${formattedContent}</div>
+                ${caption ? `<p class="caption">${caption}</p>` : ''}
+            `;
+            chatHistory.appendChild(messageDiv);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+
+        document.getElementById('user-input').addEventListener('keypress', function(e) {
+            // Send message on Enter key press
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Initialize the session when the page loads
+        initializeSession();
+    </script>
+</body>
+</html>
